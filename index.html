@@ -140,7 +140,7 @@
   <!-- Input form -->
   <div class="card">
     <h2>Generate a Playbook</h2>
-    <p class="desc">Enter the event details below. Claude will scrape the event site, pull matching Salesforce opportunities, research each account, and generate a comprehensive PDF playbook — then post it to #conference-playbooks.</p>
+    <p class="desc">Enter the event details below and hit Request. Your request will be sent to #conference-playbooks where Claude will automatically generate a full PDF playbook (Salesforce opportunities, account research, competitive intel) and post it back as a reply.</p>
 
     <div class="form-grid">
       <div class="form-group">
@@ -163,7 +163,7 @@
       </div>
     </div>
 
-    <button class="btn-generate" id="btnGenerate" onclick="handleGenerate()">Generate Conference Playbook</button>
+    <button class="btn-generate" id="btnGenerate" onclick="handleGenerate()">Request Conference Playbook</button>
   </div>
 
   <!-- Steps -->
@@ -255,125 +255,53 @@ function setInputsDisabled(disabled) {
 async function handleGenerate() {
   const eventName = document.getElementById('eventName').value.trim();
   const eventUrl = document.getElementById('eventUrl').value.trim();
-  const eventDates = document.getElementById('eventDates').value.trim() || 'TBD';
-  const eventVenue = document.getElementById('eventVenue').value.trim() || 'TBD';
+  const eventDates = document.getElementById('eventDates').value.trim();
+  const eventVenue = document.getElementById('eventVenue').value.trim();
 
   if (!eventName || !eventUrl) {
     alert('Please enter both Event Name and Event URL.');
     return;
   }
 
-  running = true;
-  setInputsDisabled(true);
-  document.getElementById('stepsContainer').style.display = 'block';
-  document.getElementById('logCard').style.display = 'block';
-  document.getElementById('logPanel').innerHTML = '';
-  document.getElementById('resultContainer').innerHTML = '';
+  // Build the Slack message
+  let slackMsg = 'Playbook request: ' + eventName + ' — ' + eventUrl;
+  if (eventDates) slackMsg += ' — ' + eventDates;
+  if (eventVenue) slackMsg += ' — ' + eventVenue;
 
-  // Step 1: Scrape event
-  setStatus('scraping'); setStep(0);
-  addLog('Fetching event page: ' + eventUrl, 'info');
-  await sleep(1800);
-  addLog('Parsing speakers and agenda...', '');
-  await sleep(1400);
-  addLog('Found confirmed speakers across multiple tracks', 'success');
-  await sleep(900);
-  addLog('Extracted sponsors/exhibitors list', 'success');
-  await sleep(600);
-  addLog('Identified roundtable topics and workshops', 'success');
+  // Open Slack with the pre-filled message in #conference-playbooks
+  const channelId = 'C0AN0S4V9GU';
+  const encoded = encodeURIComponent(slackMsg);
+  const slackUrl = 'https://app.slack.com/client/T025927A8/' + channelId + '?message=' + encoded;
 
-  // Step 2: Salesforce
-  setStatus('salesforce'); setStep(1);
-  await sleep(700);
-  addLog('Connecting to plusgrade.lightning.force.com...', 'info');
-  await sleep(2000);
-  addLog('Pulling open opportunities (Stage != Closed Won/Lost)...', '');
-  await sleep(2200);
-  addLog('Found open opportunities in matching sector', 'success');
-  await sleep(900);
-  addLog('Cross-referencing against speaker/attendee list...', '');
-  await sleep(1400);
-  addLog('Matched priority opportunities with event overlap', 'success');
-  await sleep(700);
-  addLog('Assigned tiers: Tier 1 (Must-Meet) | Tier 2 (High-Value) | Tier 3 (Opportunistic)', 'info');
-
-  // Step 3: Research
-  setStatus('researching'); setStep(2);
-  await sleep(700);
-  addLog('Researching priority accounts (last 90 days news)...', 'info');
-  const fakeAccounts = ['Account 1', 'Account 2', 'Account 3', 'Account 4', 'Account 5'];
-  for (let i = 0; i < fakeAccounts.length; i++) {
-    await sleep(600 + Math.random() * 600);
-    addLog('[' + (i+1) + '/' + fakeAccounts.length + '] ' + fakeAccounts[i] + ' — articles found', 'success');
-  }
-  await sleep(500);
-  addLog('Competitive intelligence gathered for all accounts', 'success');
-
-  // Step 4: Generate PDF
-  setStatus('generating'); setStep(3);
-  await sleep(700);
-  addLog('Assembling playbook data structure...', '');
-  await sleep(1100);
-  addLog('Generating cover page with summary stats...', '');
-  await sleep(900);
-  addLog('Building per-opportunity sections (A-G each)...', '');
-  await sleep(2200);
-  addLog('Creating Master Priority Matrix...', '');
-  await sleep(900);
-  addLog('Building unified day-by-day schedule...', '');
-  await sleep(700);
-  addLog('Adding Net-New Watchlist and Post-Conference Protocol...', '');
-  await sleep(600);
-  addLog('PDF generated: ' + eventName.replace(/\s+/g, '_') + '_Playbook.pdf', 'success');
-
-  // Step 5: Post to Slack
-  setStatus('posting'); setStep(4);
-  await sleep(700);
-  addLog('Searching for #conference-playbooks channel...', 'info');
-  await sleep(900);
-  addLog('Channel found', 'success');
-  await sleep(600);
-  addLog('Posting playbook summary and PDF to #conference-playbooks...', '');
-  await sleep(1400);
-  addLog('Posted to #conference-playbooks with PDF attachment', 'success');
-  addLog('Done! Playbook is ready.', 'success');
-
-  setStatus('done'); setStep(5);
-
-  // Show result
+  // Show confirmation
   document.getElementById('resultContainer').innerHTML = `
     <div class="result">
       <div class="result-header">
         <div>
-          <h3>${eventName}</h3>
-          <p class="meta">${eventDates} | ${eventVenue}</p>
+          <h3>Request Ready</h3>
+          <p class="meta">Your playbook request for <b>${eventName}</b> is being sent to Slack</p>
         </div>
-        <span class="result-badge">PDF Ready</span>
+        <span class="result-badge" style="background:#CCE5FF;color:#004085">Sending to Slack</span>
       </div>
-      <div class="stats-grid">
-        <div class="stat-box"><div class="value">7</div><div class="label">Opportunities</div></div>
-        <div class="stat-box"><div class="value">$5.8M</div><div class="label">Total ARR</div></div>
-        <div class="stat-box"><div class="value">4</div><div class="label">Speaker Matches</div></div>
-        <div class="stat-box"><div class="value">7</div><div class="label">Net-New Targets</div></div>
+      <div style="background:var(--grey-bg);border-radius:8px;padding:16px;margin:12px 0">
+        <p style="font-size:13px;color:#555;margin-bottom:8px"><b>What happens next:</b></p>
+        <p style="font-size:13px;color:#555;margin-bottom:6px">1. Slack will open with your request pre-filled in #conference-playbooks</p>
+        <p style="font-size:13px;color:#555;margin-bottom:6px">2. Hit <b>Send</b> in Slack to submit the request</p>
+        <p style="font-size:13px;color:#555;margin-bottom:6px">3. Claude will automatically pick it up and generate your playbook</p>
+        <p style="font-size:13px;color:#555">4. The finished PDF will be posted as a reply in #conference-playbooks</p>
+      </div>
+      <div style="background:#FFF3CD;border-radius:8px;padding:12px;margin-bottom:16px">
+        <p style="font-size:13px;color:#856404;margin:0"><b>Your request:</b> ${slackMsg}</p>
       </div>
       <div class="btn-row">
-        <button class="btn-primary" onclick="window.open('https://plusgrade.slack.com/archives/C0AN0S4V9GU', '_blank')">View PDF in #conference-playbooks</button>
-        <button class="btn-outline">&#10003; Posted to #conference-playbooks</button>
+        <button class="btn-primary" onclick="window.open('${slackUrl}', '_blank')">Open Slack &amp; Send Request</button>
+        <button class="btn-outline" onclick="window.open('https://plusgrade.slack.com/archives/C0AN0S4V9GU', '_blank')">View #conference-playbooks</button>
       </div>
-    </div>
-    <div class="slack-preview">
-      <div class="label">Posted to #conference-playbooks</div>
-      <pre><b>Conference Playbook: ${eventName}</b>
-&#128197; ${eventDates} | &#128205; ${eventVenue}
-&#128200; 7 priority opportunities | $5.8M total ARR at stake
-&#128101; 4 confirmed speaker matches | 7 net-new targets
-
-The full playbook PDF is ready for download.</pre>
     </div>
   `;
 
-  running = false;
-  setInputsDisabled(false);
+  // Auto-open Slack
+  window.open(slackUrl, '_blank');
 }
 </script>
 </body>
