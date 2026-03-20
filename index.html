@@ -273,35 +273,56 @@ async function handleGenerate() {
   const encoded = encodeURIComponent(slackMsg);
   const slackUrl = 'https://app.slack.com/client/T025927A8/' + channelId + '?message=' + encoded;
 
-  // Show confirmation
-  document.getElementById('resultContainer').innerHTML = `
-    <div class="result">
-      <div class="result-header">
-        <div>
-          <h3>Request Ready</h3>
-          <p class="meta">Your playbook request for <b>${eventName}</b> is being sent to Slack</p>
+  // Copy the request to clipboard
+  navigator.clipboard.writeText(slackMsg).then(() => {
+    // Show confirmation
+    document.getElementById('resultContainer').innerHTML = `
+      <div class="result">
+        <div class="result-header">
+          <div>
+            <h3>Request Copied!</h3>
+            <p class="meta">Your playbook request for <b>${eventName}</b> has been copied to your clipboard</p>
+          </div>
+          <span class="result-badge" style="background:#D4EDDA;color:#107C41">&#10003; Copied</span>
         </div>
-        <span class="result-badge" style="background:#CCE5FF;color:#004085">Sending to Slack</span>
+        <div style="background:#D4EDDA;border-radius:8px;padding:14px;margin:12px 0;border:1px solid #107C41">
+          <p style="font-size:14px;color:#107C41;margin:0;font-weight:600">&#10003; Your request has been copied to your clipboard</p>
+        </div>
+        <div style="background:var(--grey-bg);border-radius:8px;padding:16px;margin:12px 0">
+          <p style="font-size:13px;color:#555;margin-bottom:8px"><b>Next steps:</b></p>
+          <p style="font-size:13px;color:#555;margin-bottom:6px">1. Click the button below to open #conference-playbooks</p>
+          <p style="font-size:13px;color:#555;margin-bottom:6px">2. <b>Paste</b> (Ctrl+V / Cmd+V) in the message box</p>
+          <p style="font-size:13px;color:#555;margin-bottom:6px">3. Hit <b>Send</b></p>
+          <p style="font-size:13px;color:#555">4. Claude will automatically generate your playbook and post it as a reply</p>
+        </div>
+        <div style="background:#FFF3CD;border-radius:8px;padding:12px;margin-bottom:16px">
+          <p style="font-size:13px;color:#856404;margin:0"><b>Your request:</b> ${slackMsg}</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="window.open('https://app.slack.com/client/T025927A8/C0AN0S4V9GU', '_blank')">Open #conference-playbooks</button>
+          <button class="btn-outline" onclick="navigator.clipboard.writeText('${slackMsg.replace(/'/g, "\\'")}');this.textContent='&#10003; Copied again!'">Copy Request Again</button>
+        </div>
       </div>
-      <div style="background:var(--grey-bg);border-radius:8px;padding:16px;margin:12px 0">
-        <p style="font-size:13px;color:#555;margin-bottom:8px"><b>What happens next:</b></p>
-        <p style="font-size:13px;color:#555;margin-bottom:6px">1. Slack will open with your request pre-filled in #conference-playbooks</p>
-        <p style="font-size:13px;color:#555;margin-bottom:6px">2. Hit <b>Send</b> in Slack to submit the request</p>
-        <p style="font-size:13px;color:#555;margin-bottom:6px">3. Claude will automatically pick it up and generate your playbook</p>
-        <p style="font-size:13px;color:#555">4. The finished PDF will be posted as a reply in #conference-playbooks</p>
+    `;
+  }).catch(() => {
+    // Fallback if clipboard fails
+    document.getElementById('resultContainer').innerHTML = `
+      <div class="result">
+        <div class="result-header">
+          <div>
+            <h3>Request Ready</h3>
+            <p class="meta">Copy the request below and paste it in #conference-playbooks</p>
+          </div>
+        </div>
+        <div style="background:#FFF3CD;border-radius:8px;padding:12px;margin-bottom:16px;cursor:pointer" onclick="navigator.clipboard.writeText('${slackMsg.replace(/'/g, "\\'")}');alert('Copied!')">
+          <p style="font-size:13px;color:#856404;margin:0"><b>Click to copy:</b> ${slackMsg}</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="window.open('https://app.slack.com/client/T025927A8/C0AN0S4V9GU', '_blank')">Open #conference-playbooks</button>
+        </div>
       </div>
-      <div style="background:#FFF3CD;border-radius:8px;padding:12px;margin-bottom:16px">
-        <p style="font-size:13px;color:#856404;margin:0"><b>Your request:</b> ${slackMsg}</p>
-      </div>
-      <div class="btn-row">
-        <button class="btn-primary" onclick="window.open('${slackUrl}', '_blank')">Open Slack &amp; Send Request</button>
-        <button class="btn-outline" onclick="window.open('https://plusgrade.slack.com/archives/C0AN0S4V9GU', '_blank')">View #conference-playbooks</button>
-      </div>
-    </div>
-  `;
-
-  // Auto-open Slack
-  window.open(slackUrl, '_blank');
+    `;
+  });
 }
 </script>
 </body>
