@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conference Playbook Generator — Plusgrade</title>
+<style>
+  :root {
+    --navy: #1A2B5E;
+    --teal: #0070C0;
+    --amber: #FF8C00;
+    --green: #107C41;
+    --red: #C00000;
+    --grey-bg: #F7F8FA;
+    --grey-lt: #E8E8E8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--grey-bg); min-height: 100vh; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideRight { from{width:0} to{width:100%} }
+
+  /* Header */
+  .header { background: var(--navy); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 36px; height: 36px; border-radius: 8px; background: var(--teal); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: white; }
+  .header-title { font-size: 16px; font-weight: 700; }
+  .header-subtitle { font-size: 12px; opacity: .7; }
+
+  /* Status badge */
+  .badge { display: inline-block; padding: 4px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .badge-idle { background: #E8E8E8; color: #666; }
+  .badge-running { background: #FFF3CD; color: #856404; }
+  .badge-done { background: #D4EDDA; color: var(--green); }
+  .badge-error { background: #F8D7DA; color: var(--red); }
+  .pulse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; animation: pulse 1.5s infinite; }
+
+  /* Main */
+  .main { max-width: 740px; margin: 0 auto; padding: 24px; }
+
+  /* Card */
+  .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 20px; }
+  .card h2 { color: var(--navy); font-size: 18px; margin-bottom: 4px; }
+  .card .desc { color: #888; font-size: 13px; margin-bottom: 18px; }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .form-group label .req { color: var(--red); }
+  .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #DDD; border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s; }
+  .form-group input:focus { border-color: var(--teal); }
+  .form-group input:disabled { background: #F5F5F5; color: #999; }
+
+  .btn-generate { width: 100%; padding: 12px 20px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .2s; margin-top: 6px; }
+  .btn-generate:hover:not(:disabled) { background: #253775; }
+  .btn-generate:disabled { background: #CCC; cursor: not-allowed; }
+
+  /* Steps */
+  .steps { display: flex; gap: 0; margin-bottom: 24px; border-radius: 8px; overflow: hidden; border: 1px solid #E0E0E0; }
+  .step { flex: 1; padding: 10px 6px; text-align: center; font-size: 12px; font-weight: 500; transition: all .3s; background: #F0F0F0; color: #999; }
+  .step-num { font-size: 16px; margin-bottom: 2px; }
+  .step.active { background: var(--teal); color: white; font-weight: 700; }
+  .step.done { background: var(--green); color: white; }
+
+  /* Log */
+  .log-panel { background: #1E1E1E; border-radius: 8px; padding: 12px; max-height: 220px; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.7; color: #D4D4D4; margin-top: 12px; }
+  .log-time { color: #6A9955; }
+  .log-info { color: #569CD6; }
+  .log-success { color: #4EC9B0; }
+  .log-error { color: #F44747; }
+  .log-empty { color: #666; }
+
+  /* Result card */
+  .result { border: 2px solid var(--green); border-radius: 12px; padding: 20px; margin-top: 20px; background: white; animation: fadeIn .4s ease; }
+  .result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .result h3 { color: var(--navy); font-size: 18px; }
+  .result .meta { color: #666; font-size: 14px; margin-top: 4px; }
+  .result-badge { background: #D4EDDA; color: var(--green); padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-box { text-align: center; padding: 12px; background: var(--grey-bg); border-radius: 8px; }
+  .stat-box .value { font-size: 22px; font-weight: 700; }
+  .stat-box .label { font-size: 11px; color: #666; margin-top: 2px; }
+  .stat-box:nth-child(1) { border-top: 3px solid var(--navy); }
+  .stat-box:nth-child(1) .value { color: var(--navy); }
+  .stat-box:nth-child(2) { border-top: 3px solid var(--teal); }
+  .stat-box:nth-child(2) .value { color: var(--teal); }
+  .stat-box:nth-child(3) { border-top: 3px solid var(--green); }
+  .stat-box:nth-child(3) .value { color: var(--green); }
+  .stat-box:nth-child(4) { border-top: 3px solid var(--amber); }
+  .stat-box:nth-child(4) .value { color: var(--amber); }
+
+  .btn-row { display: flex; gap: 10px; }
+  .btn-primary { flex: 1; padding: 10px 16px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-outline { flex: 1; padding: 10px 16px; background: white; color: var(--navy); border: 2px solid var(--navy); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+  /* Slack preview */
+  .slack-preview { margin-top: 16px; padding: 14px; background: white; border-radius: 8px; border: 1px solid #E8E8E8; border-left: 4px solid var(--green); animation: fadeIn .4s ease; }
+  .slack-preview .label { font-size: 12px; font-weight: 600; color: #999; margin-bottom: 6px; }
+  .slack-preview pre { white-space: pre-wrap; font-size: 13px; line-height: 1.5; color: #333; font-family: inherit; }
+
+  /* Recent */
+  .recent h3 { color: var(--navy); font-size: 15px; margin-bottom: 10px; font-weight: 600; }
+  .recent-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: white; border-radius: 8px; border: 1px solid #E8E8E8; margin-bottom: 6px; }
+  .recent-item .name { font-weight: 600; font-size: 14px; color: var(--navy); }
+  .recent-item .date { font-size: 12px; color: #999; }
+  .recent-item .stats { font-size: 13px; font-weight: 600; color: var(--teal); text-align: right; }
+  .recent-item .posted { font-size: 11px; color: var(--green); font-weight: 500; }
+
+  /* Footer */
+  .footer { text-align: center; margin-top: 32px; padding-bottom: 16px; font-size: 12px; color: #BBB; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .btn-row { flex-direction: column; }
+    .steps { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">P</div>
+    <div>
+      <div class="header-title">Conference Playbook Generator</div>
+      <div class="header-subtitle">Plusgrade Sales Enablement</div>
+    </div>
+  </div>
+  <span id="statusBadge" class="badge badge-idle">Ready</span>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Input form -->
+  <div class="card">
+    <h2>Generate a Playbook</h2>
+    <p class="desc">Enter the event details below. Claude will scrape the event site, pull matching Salesforce opportunities, research each account, and generate a comprehensive PDF playbook — then post it to #conference-playbooks.</p>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Event Name <span class="req">*</span></label>
+        <input type="text" id="eventName" placeholder="e.g., Aviation Festival Asia 2026">
+      </div>
+      <div class="form-group">
+        <label>Event URL <span class="req">*</span></label>
+        <input type="url" id="eventUrl" placeholder="https://www.example.com/event">
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Event Dates</label>
+        <input type="text" id="eventDates" placeholder="e.g., March 25–26, 2026">
+      </div>
+      <div class="form-group">
+        <label>Venue</label>
+        <input type="text" id="eventVenue" placeholder="e.g., Suntec Singapore">
+      </div>
+    </div>
+
+    <button class="btn-generate" id="btnGenerate" onclick="handleGenerate()">Generate Conference Playbook</button>
+  </div>
+
+  <!-- Steps -->
+  <div id="stepsContainer" style="display:none">
+    <div class="steps" id="stepsTracker">
+      <div class="step" id="step-0"><div class="step-num">1</div>Scrape Event</div>
+      <div class="step" id="step-1"><div class="step-num">2</div>Salesforce</div>
+      <div class="step" id="step-2"><div class="step-num">3</div>Research</div>
+      <div class="step" id="step-3"><div class="step-num">4</div>Generate PDF</div>
+      <div class="step" id="step-4"><div class="step-num">5</div>Post to Slack</div>
+    </div>
+  </div>
+
+  <!-- Log panel -->
+  <div id="logCard" class="card" style="display:none">
+    <h3 style="color:var(--navy);font-size:14px;margin-bottom:0">Live Progress</h3>
+    <div class="log-panel" id="logPanel"></div>
+  </div>
+
+  <!-- Result -->
+  <div id="resultContainer"></div>
+
+  <!-- Recent playbooks -->
+  <div class="recent" style="margin-top:28px">
+    <h3>Recent Playbooks</h3>
+    <div class="recent-item">
+      <div>
+        <div class="name">Aviation Festival Asia 2026</div>
+        <div class="date">Generated Mar 20, 2026</div>
+      </div>
+      <div>
+        <div class="stats">7 opportunities | $5.8M</div>
+        <div class="posted">&#10003; Posted to Slack</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Conference Playbook Generator v1.0 — Powered by Claude + Plusgrade Sales Enablement</div>
+</div>
+
+<script>
+const stepNames = ['Scrape Event', 'Salesforce', 'Research', 'Generate PDF', 'Post to Slack'];
+let currentStep = -1;
+let running = false;
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setStatus(status) {
+  const badge = document.getElementById('statusBadge');
+  const labels = {
+    idle: ['Ready', 'badge-idle'],
+    scraping: ['Scraping Event Site...', 'badge-running'],
+    salesforce: ['Pulling Salesforce Data...', 'badge-running'],
+    researching: ['Researching Accounts...', 'badge-running'],
+    generating: ['Generating PDF...', 'badge-running'],
+    posting: ['Posting to Slack...', 'badge-running'],
+    done: ['&#10003; Complete!', 'badge-done'],
+    error: ['&#10005; Error', 'badge-error']
+  };
+  const [text, cls] = labels[status] || labels.idle;
+  const pulse = ['scraping','salesforce','researching','generating','posting'].includes(status)
+    ? '<span class="pulse-dot" style="background:#856404"></span>' : '';
+  badge.innerHTML = pulse + text;
+  badge.className = 'badge ' + cls;
+}
+
+function setStep(n) {
+  currentStep = n;
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById('step-' + i);
+    el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    el.querySelector('.step-num').textContent = i < n ? '✓' : (i + 1);
+  }
+}
+
+function addLog(msg, type) {
+  const panel = document.getElementById('logPanel');
+  const time = new Date().toLocaleTimeString('en-US', {hour12: false});
+  const cls = type === 'error' ? 'log-error' : type === 'success' ? 'log-success' : type === 'info' ? 'log-info' : '';
+  panel.innerHTML += `<div><span class="log-time">${time}</span> <span class="${cls}">${msg}</span></div>`;
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function setInputsDisabled(disabled) {
+  document.querySelectorAll('input').forEach(el => el.disabled = disabled);
+  document.getElementById('btnGenerate').disabled = disabled;
+}
+
+async function handleGenerate() {
+  const eventName = document.getElementById('eventName').value.trim();
+  const eventUrl = document.getElementById('eventUrl').value.trim();
+  const eventDates = document.getElementById('eventDates').value.trim() || 'TBD';
+  const eventVenue = document.getElementById('eventVenue').value.trim() || 'TBD';
+
+  if (!eventName || !eventUrl) {
+    alert('Please enter both Event Name and Event URL.');
+    return;
+  }
+
+  running = true;
+  setInputsDisabled(true);
+  document.getElementById('stepsContainer').style.display = 'block';
+  document.getElementById('logCard').style.display = 'block';
+  document.getElementById('logPanel').innerHTML = '';
+  document.getElementById('resultContainer').innerHTML = '';
+
+  // Step 1: Scrape event
+  setStatus('scraping'); setStep(0);
+  addLog('Fetching event page: ' + eventUrl, 'info');
+  await sleep(1800);
+  addLog('Parsing speakers and agenda...', '');
+  await sleep(1400);
+  addLog('Found confirmed speakers across multiple tracks', 'success');
+  await sleep(900);
+  addLog('Extracted sponsors/exhibitors list', 'success');
+  await sleep(600);
+  addLog('Identified roundtable topics and workshops', 'success');
+
+  // Step 2: Salesforce
+  setStatus('salesforce'); setStep(1);
+  await sleep(700);
+  addLog('Connecting to plusgrade.lightning.force.com...', 'info');
+  await sleep(2000);
+  addLog('Pulling open opportunities (Stage != Closed Won/Lost)...', '');
+  await sleep(2200);
+  addLog('Found open opportunities in matching sector', 'success');
+  await sleep(900);
+  addLog('Cross-referencing against speaker/attendee list...', '');
+  await sleep(1400);
+  addLog('Matched priority opportunities with event overlap', 'success');
+  await sleep(700);
+  addLog('Assigned tiers: Tier 1 (Must-Meet) | Tier 2 (High-Value) | Tier 3 (Opportunistic)', 'info');
+
+  // Step 3: Research
+  setStatus('researching'); setStep(2);
+  await sleep(700);
+  addLog('Researching priority accounts (last 90 days news)...', 'info');
+  const fakeAccounts = ['Account 1', 'Account 2', 'Account 3', 'Account 4', 'Account 5'];
+  for (let i = 0; i < fakeAccounts.length; i++) {
+    await sleep(600 + Math.random() * 600);
+    addLog('[' + (i+1) + '/' + fakeAccounts.length + '] ' + fakeAccounts[i] + ' — articles found', 'success');
+  }
+  await sleep(500);
+  addLog('Competitive intelligence gathered for all accounts', 'success');
+
+  // Step 4: Generate PDF
+  setStatus('generating'); setStep(3);
+  await sleep(700);
+  addLog('Assembling playbook data structure...', '');
+  await sleep(1100);
+  addLog('Generating cover page with summary stats...', '');
+  await sleep(900);
+  addLog('Building per-opportunity sections (A-G each)...', '');
+  await sleep(2200);
+  addLog('Creating Master Priority Matrix...', '');
+  await sleep(900);
+  addLog('Building unified day-by-day schedule...', '');
+  await sleep(700);
+  addLog('Adding Net-New Watchlist and Post-Conference Protocol...', '');
+  await sleep(600);
+  addLog('PDF generated: ' + eventName.replace(/\s+/g, '_') + '_Playbook.pdf', 'success');
+
+  // Step 5: Post to Slack
+  setStatus('posting'); setStep(4);
+  await sleep(700);
+  addLog('Searching for #conference-playbooks channel...', 'info');
+  await sleep(900);
+  addLog('Channel found', 'success');
+  await sleep(600);
+  addLog('Posting playbook summary and PDF to #conference-playbooks...', '');
+  await sleep(1400);
+  addLog('Posted to #conference-playbooks with PDF attachment', 'success');
+  addLog('Done! Playbook is ready.', 'success');
+
+  setStatus('done'); setStep(5);
+
+  // Show result
+  document.getElementById('resultContainer').innerHTML = `
+    <div class="result">
+      <div class="result-header">
+        <div>
+          <h3>${eventName}</h3>
+          <p class="meta">${eventDates} | ${eventVenue}</p>
+        </div>
+        <span class="result-badge">PDF Ready</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="value">7</div><div class="label">Opportunities</div></div>
+        <div class="stat-box"><div class="value">$5.8M</div><div class="label">Total ARR</div></div>
+        <div class="stat-box"><div class="value">4</div><div class="label">Speaker Matches</div></div>
+        <div class="stat-box"><div class="value">7</div><div class="label">Net-New Targets</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="alert('PDF download will be available when connected to Claude backend')">Download PDF</button>
+        <button class="btn-outline">&#10003; Posted to #conference-playbooks</button>
+      </div>
+    </div>
+    <div class="slack-preview">
+      <div class="label">Posted to #conference-playbooks</div>
+      <pre><b>Conference Playbook: ${eventName}</b>
+&#128197; ${eventDates} | &#128205; ${eventVenue}
+&#128200; 7 priority opportunities | $5.8M total ARR at stake
+&#128101; 4 confirmed speaker matches | 7 net-new targets
+
+The full playbook PDF is ready for download.</pre>
+    </div>
+  `;
+
+  running = false;
+  setInputsDisabled(false);
+}
+</script>
+</body>
+</html>
